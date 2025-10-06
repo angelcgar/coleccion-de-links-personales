@@ -26,6 +26,7 @@ import {
   Divider,
   Input,
 } from "@heroui/react";
+import { InfiniteScroll } from "@/components/infinite-scroll";
 import { StarRating } from "@/components/star-rating";
 import { allLinks } from "../data/links";
 
@@ -103,9 +104,14 @@ export default function Home() {
             isLoaded ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
           }`}
         >
-          <div className="absolute right-0 top-0">
+          <div className="absolute left-0 top-0">
             <ThemeToggle />
           </div>
+
+          <div className="absolute right-0 top-0">
+            Resultados: {filteredLinks.length}
+          </div>
+
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50 md:text-4xl">
             Colección de Enlaces Favoritos
           </h1>
@@ -186,14 +192,14 @@ export default function Home() {
         </div>
 
         {/* Infinite scroll loader - Only render when needed */}
-        {/* {visibleLinks.length > 0 &&
+        {visibleLinks.length > 0 &&
           visibleLinks.length < filteredLinks.length && (
             <InfiniteScroll
               onLoadMore={loadMoreLinks}
               hasMore={visibleLinks.length < filteredLinks.length}
               className="mt-4"
             />
-          )} */}
+          )}
       </div>
     </main>
   );

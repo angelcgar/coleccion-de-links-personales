@@ -208,7 +208,7 @@ function LinkCardContent({
 }) {
   return (
     <>
-      <CardHeader className="flex gap-3 dark:text-white text-red-200">
+      <CardHeader className="flex gap-3 dark:text-white text-slate-900">
         <Image
           alt="heroui logo"
           height={40}
@@ -218,7 +218,7 @@ function LinkCardContent({
         />
         <div className="flex flex-col">
           <p className="text-md">{link.name}</p>
-          <p className="text-small text-default-500">
+          <p className="text-small">
             {link.name.toLocaleLowerCase().replace(" ", "-")}.com
           </p>
         </div>
@@ -226,7 +226,7 @@ function LinkCardContent({
 
       <Divider />
 
-      <CardBody>
+      <CardBody className="dark:text-white text-slate-900">
         <p>{link.description}</p>
       </CardBody>
 

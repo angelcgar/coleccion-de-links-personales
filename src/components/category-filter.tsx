@@ -58,7 +58,7 @@ export function CategoryFilter({
               }
             }}
           >
-            {category.name}
+            <p className="dark:text-white text-slate-900">{category.name}</p>
           </Checkbox>
           {/* htmlFor={`category-${category.id}`} */}
           {/* <Chip className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">

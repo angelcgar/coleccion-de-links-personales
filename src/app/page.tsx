@@ -28,14 +28,16 @@ import {
 } from "@heroui/react";
 import { InfiniteScroll } from "@/components/infinite-scroll";
 import { StarRating } from "@/components/star-rating";
-import { allLinks } from "../data/links";
+// import { allLinks } from "../data/links";
+import { getLinks, getLinksStart } from "./actions/db-actions";
 
 export default function Home() {
   const [sortOrder, setSortOrder] = useState("name");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [visibleLinks, setVisibleLinks] = useState<typeof allLinks>([]);
+  const [visibleLinks, setVisibleLinks] = useState<unknown>([]);
+  const [allLinks, setAllLinks] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const linksPerPage = 12;
 
@@ -67,10 +69,15 @@ export default function Home() {
 
   // Load initial links only once
   useEffect(() => {
-    setIsLoaded(true);
-    setVisibleLinks(filteredLinks.slice(0, linksPerPage));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Intencionalmente vacío para ejecutar solo una vez
+    async function loadLinks() {
+      const links = await getLinksStart();
+      console.log({ links });
+      setAllLinks(links);
+      setVisibleLinks(links);
+      setIsLoaded(true);
+    }
+    loadLinks();
+  }, []);
 
   // Update visible links when filters change
   useEffect(() => {

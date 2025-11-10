@@ -80,14 +80,25 @@ export async function getCategories(): Promise<Category[]> {
   }
 }
 
-export async function getLinksStart() {
+type LinkItem = {
+  id: string;
+  name: string;
+  url: string;
+  description: string;
+  rating: number;
+  dateAdded: string;
+  categoryId: string;
+  categoryName: string;
+};
+
+export async function getLinksStart(): Promise<LinkItem[]> {
   const result = await turso.execute(`
     SELECT l.*, c.name AS categoryName
     FROM links l
     INNER JOIN categories c ON l.category_id = c.id
   `);
   return result.rows.map((row) => ({
-    id: row.id,
+    id: row.id as string,
     name: row.name,
     description: row.description,
     url: row.url,

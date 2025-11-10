@@ -1,4 +1,4 @@
-import { initializeTables, seedInitialData } from "../app/actions/db-actions";
+import { initializeTables } from "../app/actions/db-actions";
 
 async function main() {
   console.log("🚀 Iniciando configuración de base de datos...");
@@ -15,16 +15,16 @@ async function main() {
       return;
     }
 
-    // Paso 2: Sembrar datos
-    console.log("🌱 Sembrando datos iniciales...");
-    const seedResult = await seedInitialData();
-
-    if (seedResult.success) {
-      console.log("✅ Datos sembrados exitosamente");
-    } else {
-      console.error("❌ Error sembrando datos:", seedResult.message);
-      return;
-    }
+    // Paso 2: Sembrar datos - COMENTADO
+    // console.log("🌱 Sembrando datos iniciales...");
+    // const seedResult = await seedInitialData();
+    //
+    // if (seedResult.success) {
+    //   console.log("✅ Datos sembrados exitosamente");
+    // } else {
+    //   console.error("❌ Error sembrando datos:", seedResult.message);
+    //   return;
+    // }
 
     console.log("🎉 ¡Base de datos configurada completamente!");
   } catch (error) {

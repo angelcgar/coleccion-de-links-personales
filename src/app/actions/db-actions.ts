@@ -128,7 +128,7 @@ export async function getLinks(options: {
     const offset = (page - 1) * limit;
 
     let whereClause = "WHERE 1=1";
-    const params: any[] = [];
+    const params: (string | number)[] = [];
 
     // Filtro de búsqueda
     if (searchQuery) {
@@ -253,44 +253,166 @@ export async function createLink(data: {
   }
 }
 
-// Sembrar datos iniciales (migración de datos del JSON)
-export async function seedInitialData() {
+// Sembrar datos iniciales (migración de datos del JSON) - COMENTADA
+// export async function seedInitialData() {
+//   try {
+//     const { categories } = await import("@/data/links");
+
+//     // Insertar categorías
+//     for (const category of categories) {
+//       await turso.execute({
+//         sql: "INSERT OR IGNORE INTO categories (id, name) VALUES (?, ?)",
+//         args: [category.id, category.name],
+//       });
+
+//       // Insertar links de cada categoría
+//       for (const link of category.links) {
+//         await turso.execute({
+//           sql: `
+//             INSERT OR IGNORE INTO links (id, name, description, url, category_id, rating, date_added)
+//             VALUES (?, ?, ?, ?, ?, ?, ?)
+//           `,
+//           args: [
+//             link.id,
+//             link.name,
+//             link.description,
+//             link.url,
+//             category.id,
+//             link.rating,
+//             link.dateAdded,
+//           ],
+//         });
+//       }
+//     }
+
+//     return {
+//       success: true,
+//       message: "Datos iniciales sembrados correctamente",
+//     };
+//   } catch (error) {
+//     console.error("Error sembrando datos:", error);
+//     return { success: false, message: "Error al sembrar los datos" };
+//   }
+// }
+
+// ========== NUEVAS FUNCIONES PARA CRUD DE LINKS ==========
+
+// Obtener un link por ID
+export async function getLinkById(id: string): Promise<LinkType | null> {
   try {
-    const { categories } = await import("@/data/links");
+    const result = await turso.execute({
+      sql: `
+        SELECT
+          l.id,
+          l.name,
+          l.description,
+          l.url,
+          l.category_id as categoryId,
+          c.name as categoryName,
+          l.rating,
+          l.date_added as dateAdded
+        FROM links l
+        JOIN categories c ON l.category_id = c.id
+        WHERE l.id = ?
+      `,
+      args: [id],
+    });
 
-    // Insertar categorías
-    for (const category of categories) {
-      await turso.execute({
-        sql: "INSERT OR IGNORE INTO categories (id, name) VALUES (?, ?)",
-        args: [category.id, category.name],
-      });
-
-      // Insertar links de cada categoría
-      for (const link of category.links) {
-        await turso.execute({
-          sql: `
-            INSERT OR IGNORE INTO links (id, name, description, url, category_id, rating, date_added)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          `,
-          args: [
-            link.id,
-            link.name,
-            link.description,
-            link.url,
-            category.id,
-            link.rating,
-            link.dateAdded,
-          ],
-        });
-      }
+    if (result.rows.length === 0) {
+      return null;
     }
 
+    const row = result.rows[0];
     return {
-      success: true,
-      message: "Datos iniciales sembrados correctamente",
+      id: row.id as string,
+      name: row.name as string,
+      description: row.description as string,
+      url: row.url as string,
+      categoryId: row.categoryId as string,
+      categoryName: row.categoryName as string,
+      rating: row.rating as number,
+      dateAdded: row.dateAdded as string,
     };
   } catch (error) {
-    console.error("Error sembrando datos:", error);
-    return { success: false, message: "Error al sembrar los datos" };
+    console.error("Error obteniendo link por ID:", error);
+    return null;
+  }
+}
+
+// Actualizar un link
+export async function updateLink(
+  id: string,
+  data: {
+    name?: string;
+    url?: string;
+    description?: string;
+    categoryId?: string;
+    rating?: number;
+  },
+) {
+  try {
+    const updates: string[] = [];
+    const args: (string | number)[] = [];
+
+    // Construir dinámicamente la query de UPDATE
+    if (data.name !== undefined) {
+      updates.push("name = ?");
+      args.push(data.name);
+    }
+    if (data.url !== undefined) {
+      updates.push("url = ?");
+      args.push(data.url);
+    }
+    if (data.description !== undefined) {
+      updates.push("description = ?");
+      args.push(data.description);
+    }
+    if (data.categoryId !== undefined) {
+      updates.push("category_id = ?");
+      args.push(data.categoryId);
+    }
+    if (data.rating !== undefined) {
+      updates.push("rating = ?");
+      args.push(data.rating);
+    }
+
+    if (updates.length === 0) {
+      return { success: false, message: "No hay campos para actualizar" };
+    }
+
+    args.push(id); // ID va al final para la cláusula WHERE
+
+    await turso.execute({
+      sql: `UPDATE links SET ${updates.join(", ")} WHERE id = ?`,
+      args,
+    });
+
+    revalidatePath("/");
+    revalidatePath("/modify-link");
+    return { success: true, message: "Link actualizado correctamente" };
+  } catch (error) {
+    console.error("Error actualizando link:", error);
+    return { success: false, message: "Error al actualizar el link" };
+  }
+}
+
+// Eliminar un link
+export async function deleteLink(id: string) {
+  try {
+    const result = await turso.execute({
+      sql: "DELETE FROM links WHERE id = ?",
+      args: [id],
+    });
+
+    if (result.rowsAffected === 0) {
+      return { success: false, message: "Link no encontrado" };
+    }
+
+    revalidatePath("/");
+    revalidatePath("/modify-link");
+    return { success: true, message: "Link eliminado correctamente" };
+  } catch (error) {
+    console.error("Error eliminando link:", error);
+    return { success: false, message: "Error al eliminar el link" };
   }
 }

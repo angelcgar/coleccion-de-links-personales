@@ -1,24 +1,17 @@
 "use client";
 
+import { useCallback, useEffect, useMemo, useState } from "react";
+
 import { Chip } from "@heroui/chip";
 
 import {
   Dropdown,
   DropdownItem,
   DropdownMenu,
-  DropdownSection,
   DropdownTrigger,
 } from "@heroui/dropdown";
-import { Card, Image, Link } from "@heroui/react";
-import { ChevronDown, ExternalLink, Search } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { AnimatedCard } from "@/components/animated-card";
-// import { InfiniteScroll } from '@/components/infinite-scroll';
-import { CategoryFilter } from "@/components/category-filter";
-import { ThemeToggle } from "@/components/theme-toggle";
-// import { StarRating } from '@/components/star-rating';
-
 import {
+  Image,
   Button,
   CardBody,
   CardFooter,
@@ -26,66 +19,55 @@ import {
   Divider,
   Input,
 } from "@heroui/react";
+import { ExternalLink, Search } from "lucide-react";
+import { AnimatedCard } from "@/components/animated-card";
+import { CategoryFilter } from "@/components/category-filter";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { InfiniteScroll } from "@/components/infinite-scroll";
-import { StarRating } from "@/components/star-rating";
-// import { allLinks } from "../data/links";
-import { getLinks, getLinksStart } from "./actions/db-actions";
+import { getLinksStart } from "./actions/db-actions";
+import {
+  filterAndSortLinks,
+  type LinkItem,
+  type SortOrder,
+} from "@/lib/link-utils";
 
 export default function Home() {
-  const [sortOrder, setSortOrder] = useState("name");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("name");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [visibleLinks, setVisibleLinks] = useState<unknown>([]);
-  const [allLinks, setAllLinks] = useState<any[]>([]);
+  const [allLinks, setAllLinks] = useState<unknown[]>([]);
+  const [visibleLinks, setVisibleLinks] = useState<unknown[]>([]);
   const [page, setPage] = useState(1);
   const linksPerPage = 12;
 
-  // Memoize filtered links to prevent recalculation on every render
-  const filteredLinks = useMemo(() => {
-    return allLinks
-      .filter(
-        (link) =>
-          (selectedCategories.length === 0 ||
-            selectedCategories.includes(link.categoryId)) &&
-          (link.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            link.description.toLowerCase().includes(searchQuery.toLowerCase())),
-      )
-      .sort((a, b) => {
-        if (sortOrder === "name") {
-          return a.name.localeCompare(b.name);
-        } else if (sortOrder === "date") {
-          return (
-            new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime()
-          );
-        } else if (sortOrder === "category") {
-          return a.categoryName.localeCompare(b.categoryName);
-        } else if (sortOrder === "rating") {
-          return b.rating - a.rating;
-        }
-        return 0;
-      });
-  }, [searchQuery, sortOrder, selectedCategories]);
+  const filteredLinks = useMemo(
+    () =>
+      filterAndSortLinks(
+        allLinks as LinkItem[],
+        searchQuery,
+        selectedCategories,
+        sortOrder,
+      ),
+    [allLinks, searchQuery, selectedCategories, sortOrder],
+  );
 
-  // Load initial links only once
+  // Carga inicial desde la DB
   useEffect(() => {
-    async function loadLinks() {
+    (async () => {
       const links = await getLinksStart();
-      console.log({ links });
       setAllLinks(links);
       setVisibleLinks(links);
       setIsLoaded(true);
-    }
-    loadLinks();
+    })();
   }, []);
 
-  // Update visible links when filters change
+  // Actualiza los visibles cuando cambian los filtros
   useEffect(() => {
     setPage(1);
     setVisibleLinks(filteredLinks.slice(0, linksPerPage));
-  }, [filteredLinks, linksPerPage]);
+  }, [filteredLinks]);
 
-  // Load more links
   const loadMoreLinks = useCallback(() => {
     const nextPage = page + 1;
     const startIndex = page * linksPerPage;
@@ -96,12 +78,12 @@ export default function Home() {
       setVisibleLinks((prev) => [...prev, ...newLinks]);
       setPage(nextPage);
     }
-  }, [page, filteredLinks, linksPerPage]);
+  }, [page, filteredLinks]);
 
-  // Memoize the category change handler
-  const handleCategoryChange = useCallback((categories: string[]) => {
-    setSelectedCategories(categories);
-  }, []);
+  const handleCategoryChange = useCallback(
+    (categories: string[]) => setSelectedCategories(categories),
+    [],
+  );
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
@@ -114,7 +96,6 @@ export default function Home() {
           <div className="absolute left-0 top-0">
             <ThemeToggle />
           </div>
-
           <div className="absolute right-0 top-0">
             Resultados: {filteredLinks.length}
           </div>
@@ -127,21 +108,16 @@ export default function Home() {
           </p>
         </header>
 
-        {/* Category filter */}
         <CategoryFilter
           selectedCategories={selectedCategories}
           onChange={handleCategoryChange}
         />
 
-        <div
-          className={`mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between transition-all duration-700 delay-300 ease-out ${
-            isLoaded ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-          }`}
-        >
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between transition-all duration-700 delay-300 ease-out">
           <div className="relative w-full sm:max-w-md">
             <Input
               type="search"
-              placeholder="Buscar enlaces por nombre o descripción..."
+              placeholder="Buscar enlaces..."
               className="w-full"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -149,91 +125,76 @@ export default function Home() {
             />
           </div>
 
-          <div className="flex items-center">
-            <Dropdown>
-              <DropdownTrigger asChild>
-                <Button variant="solid" className="w-full sm:w-auto">
-                  Ordenar por:{" "}
-                  {sortOrder === "name"
-                    ? "Nombre"
-                    : sortOrder === "date"
-                      ? "Fecha"
-                      : sortOrder === "category"
-                        ? "Categoría"
-                        : "Popularidad"}
-                  {/* <ChevronDown className="ml-2 h-4 w-4" /> */}
-                </Button>
-              </DropdownTrigger>
-
-              <DropdownMenu>
-                <DropdownItem key="name" onClick={() => setSortOrder("name")}>
-                  Nombre
-                </DropdownItem>
-                <DropdownItem key="date" onClick={() => setSortOrder("date")}>
-                  Fecha añadida
-                </DropdownItem>
-                <DropdownItem
-                  key="category"
-                  onClick={() => setSortOrder("category")}
-                >
-                  Categoría
-                </DropdownItem>
-                <DropdownItem
-                  key="rating"
-                  onClick={() => setSortOrder("rating")}
-                >
-                  Popularidad
-                </DropdownItem>
-              </DropdownMenu>
-            </Dropdown>
-          </div>
+          <Dropdown>
+            <DropdownTrigger asChild>
+              <Button variant="solid" className="w-full sm:w-auto">
+                Ordenar por:{" "}
+                {sortOrder === "name"
+                  ? "Nombre"
+                  : sortOrder === "date"
+                    ? "Fecha"
+                    : sortOrder === "category"
+                      ? "Categoría"
+                      : "Popularidad"}
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu>
+              <DropdownItem key={"nombre"} onClick={() => setSortOrder("name")}>
+                Nombre
+              </DropdownItem>
+              <DropdownItem key={"Fecha"} onClick={() => setSortOrder("date")}>
+                Fecha
+              </DropdownItem>
+              <DropdownItem
+                key={"Categoría"}
+                onClick={() => setSortOrder("category")}
+              >
+                Categoría
+              </DropdownItem>
+              <DropdownItem
+                key={"Popularidad"}
+                onClick={() => setSortOrder("rating")}
+              >
+                Popularidad
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
         </div>
 
-        {/* All links in a grid */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visibleLinks.map((link, index) => (
             <AnimatedCard key={link.id} index={index % linksPerPage}>
-              <LinkCardContent link={link} categoryName={link.categoryName} />
+              <LinkCardContent link={link} />
             </AnimatedCard>
           ))}
         </div>
 
-        {/* Infinite scroll loader - Only render when needed */}
-        {visibleLinks.length > 0 &&
-          visibleLinks.length < filteredLinks.length && (
-            <InfiniteScroll
-              onLoadMore={loadMoreLinks}
-              hasMore={visibleLinks.length < filteredLinks.length}
-              className="mt-4"
-            />
-          )}
+        {visibleLinks.length < filteredLinks.length && (
+          <InfiniteScroll
+            onLoadMore={loadMoreLinks}
+            hasMore={true}
+            className="mt-4"
+          />
+        )}
       </div>
     </main>
   );
 }
 
-function LinkCardContent({
-  link,
-  categoryName,
-}: {
-  link: (typeof allLinks)[0];
-  categoryName: string;
-}) {
+function LinkCardContent({ link }: { link: LinkItem }) {
   return (
     <>
       <CardHeader className="flex gap-3 dark:text-white text-slate-900">
         <Image
-          alt="heroui logo"
+          alt="logo"
           height={40}
+          width={40}
           radius="sm"
           src="https://avatars.githubusercontent.com/u/86160567?s=200&v=4"
-          width={40}
         />
         <div className="flex flex-col">
           <p className="text-md">{link.name}</p>
-          <p className="text-small">
-            {link.name.toLocaleLowerCase().replace(" ", "-")}.com
-          </p>
+          <p className="text-small">{link.url.replace(/^https?:\/\//, "")}</p>
         </div>
       </CardHeader>
 
@@ -246,15 +207,14 @@ function LinkCardContent({
       <Divider />
 
       <CardFooter className="flex justify-between pt-2">
-        <Chip className="select-none cursor-default">{categoryName}</Chip>
+        <Chip>{link.categoryName}</Chip>
         <Button
           variant="ghost"
           size="sm"
           onPress={() => window.open(link.url, "_blank")}
-          className="text-slate-700 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50"
+          className="text-slate-700 dark:text-slate-300"
         >
-          <ExternalLink className="h-4 w-4" />
-          Visitar
+          <ExternalLink className="h-4 w-4" /> Visitar
         </Button>
       </CardFooter>
     </>

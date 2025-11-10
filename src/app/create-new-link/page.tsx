@@ -1,345 +1,51 @@
-"use client";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { UnauthorizedMessage } from "@/components/unauthorized-message";
+import CreateNewLinkForm from "@/components/create-new-link-form";
 
-import { useState, useEffect } from "react";
-
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-
-import { useForm } from "react-hook-form";
-import { useUser, RedirectToSignIn } from "@clerk/nextjs";
-
-import { ArrowLeft, Loader2 } from "lucide-react";
-
-import { Button } from "@heroui/button";
-import { Input } from "@heroui/input";
-import { Textarea } from "@heroui/input";
-import { Select, SelectItem } from "@heroui/react";
-
-import { Card, CardBody, CardHeader } from "@heroui/react";
-
-import {
-  createLink,
-  getCategories,
-  type Category,
-} from "@/app/actions/db-actions";
-
-// Lista de usuarios permitidos (IDs de Clerk o emails)
-const allowedUsers = [
-  "user_2pQKxxxxxxxxxxxxxxxxxxx", // Ejemplo de ID de usuario de Clerk
-  "example@email.com", // Ejemplo de email
-  // Agrega aquí los IDs o emails de los usuarios que quieres permitir
-];
-
-type FormData = {
-  name: string;
-  description: string;
-  url: string;
-  categoryId: string;
-  rating: number;
-};
-
-function UnauthorizedMessage() {
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center">
-      <Card className="max-w-md mx-auto">
-        <CardBody className="text-center">
-          <h2 className="text-xl font-semibold mb-2 text-slate-900 dark:text-slate-50">
-            No autorizado
-          </h2>
-          <p className="text-slate-600 dark:text-slate-400">
-            No tienes permisos para acceder a esta página.
-          </p>
-        </CardBody>
-      </Card>
-    </div>
-  );
+// Obtener lista de usuarios permitidos desde variables de entorno
+function getAllowedUsers(): string[] {
+  const allowedUsersEnv = process.env.ALLOWED_USERS;
+  if (!allowedUsersEnv) {
+    console.warn(
+      "ALLOWED_USERS no está configurado en las variables de entorno",
+    );
+    return [];
+  }
+  return allowedUsersEnv
+    .split(",")
+    .map((user) => user.trim())
+    .filter(Boolean);
 }
 
-export default function CreateNewLink() {
-  const { user, isSignedIn, isLoaded } = useUser();
-  const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [message, setMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
-
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors },
-    reset,
-  } = useForm<FormData>({
-    defaultValues: {
-      rating: 4.0,
-    },
-  });
-
-  const selectedCategory = watch("categoryId");
-
-  useEffect(() => {
-    async function loadCategories() {
-      const cats = await getCategories();
-      setCategories(cats);
-    }
-    loadCategories();
-  }, []);
-
-  // Si aún no ha cargado la información del usuario, mostrar loading
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center">
-        <div className="flex items-center gap-2">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span>Cargando...</span>
-        </div>
-      </div>
-    );
-  }
+export default async function CreateNewLink() {
+  // Verificar autenticación en el servidor
+  const { userId } = await auth();
 
   // Si no está autenticado, redirigir al login
-  if (!isSignedIn) {
-    return <RedirectToSignIn />;
+  if (!userId) {
+    redirect("/sign-in");
   }
 
-  // Verificar si el usuario está en la lista de permitidos
+  // Obtener datos del usuario actual
+  const user = await currentUser();
+
+  if (!user) {
+    redirect("/sign-in");
+  }
+
+  // Verificar autorización
+  const allowedUsers = getAllowedUsers();
+  const userEmail = user.primaryEmailAddress?.emailAddress;
+
   const isAuthorized =
     allowedUsers.includes(user.id) ||
-    allowedUsers.includes(user.primaryEmailAddress?.emailAddress || "");
+    (userEmail && allowedUsers.includes(userEmail));
 
   if (!isAuthorized) {
     return <UnauthorizedMessage />;
   }
 
-  const onSubmit = async (data: FormData) => {
-    console.log(data);
-    setIsSubmitting(true);
-    setMessage(null);
-
-    try {
-      const result = await createLink(data);
-
-      if (result.success) {
-        setMessage({ type: "success", text: result.message });
-        reset();
-
-        // Redirigir a la página principal después de 2 segundos
-        setTimeout(() => {
-          router.push("/");
-        }, 2000);
-      } else {
-        setMessage({ type: "error", text: result.message });
-      }
-    } catch {
-      setMessage({ type: "error", text: "Error inesperado al crear el link" });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="mb-6">
-          <Link href="/">
-            <Button variant="ghost" className="mb-4">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Volver a la lista
-            </Button>
-          </Link>
-
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-            Crear Nuevo Link
-          </h1>
-          <p className="mt-2 text-slate-600 dark:text-slate-400">
-            Agrega un nuevo enlace a tu colección personal
-          </p>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <h2>Información del Link</h2>
-            <p>Completa todos los campos para agregar un nuevo enlace</p>
-          </CardHeader>
-          <CardBody>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* Nombre */}
-              <div className="space-y-2">
-                <label htmlFor="name">
-                  Nombre <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  id="name"
-                  placeholder="Ej: GitHub"
-                  {...register("name", {
-                    required: "El nombre es requerido",
-                    minLength: {
-                      value: 2,
-                      message: "El nombre debe tener al menos 2 caracteres",
-                    },
-                    maxLength: {
-                      value: 100,
-                      message: "El nombre no puede exceder 100 caracteres",
-                    },
-                  })}
-                />
-                {errors.name && (
-                  <p className="text-sm text-red-500">{errors.name.message}</p>
-                )}
-              </div>
-
-              {/* Descripción */}
-              <div className="space-y-2">
-                <label htmlFor="description">
-                  Descripción <span className="text-red-500">*</span>
-                </label>
-                <Textarea
-                  id="description"
-                  placeholder="Ej: Plataforma de desarrollo colaborativo"
-                  rows={3}
-                  {...register("description", {
-                    required: "La descripción es requerida",
-                    minLength: {
-                      value: 10,
-                      message:
-                        "La descripción debe tener al menos 10 caracteres",
-                    },
-                    maxLength: {
-                      value: 500,
-                      message: "La descripción no puede exceder 500 caracteres",
-                    },
-                  })}
-                />
-                {errors.description && (
-                  <p className="text-sm text-red-500">
-                    {errors.description.message}
-                  </p>
-                )}
-              </div>
-
-              {/* URL */}
-              <div className="space-y-2">
-                <label htmlFor="url">
-                  URL <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  id="url"
-                  type="url"
-                  placeholder="https://ejemplo.com"
-                  {...register("url", {
-                    required: "La URL es requerida",
-                    pattern: {
-                      value: /^https?:\/\/.+/,
-                      message: "Debe ser una URL válida (http:// o https://)",
-                    },
-                  })}
-                />
-                {errors.url && (
-                  <p className="text-sm text-red-500">{errors.url.message}</p>
-                )}
-              </div>
-
-              {/* Categoría */}
-              <div className="space-y-2">
-                <label htmlFor="category">
-                  Categoría <span className="text-red-500">*</span>
-                </label>
-
-                <Select
-                  className="max-w-xs"
-                  placeholder="Selecciona una categoría"
-                  selectedKeys={selectedCategory ? [selectedCategory] : []}
-                  onSelectionChange={(keys) => {
-                    const selected = Array.from(keys)[0];
-                    // React Hook Form: setea categoryId en el formulario
-                    const event = {
-                      target: { name: "categoryId", value: selected },
-                    };
-                    register("categoryId").onChange(event);
-                  }}
-                >
-                  {categories.map((category) => (
-                    <SelectItem key={category.id}>{category.name}</SelectItem>
-                  ))}
-                </Select>
-
-                {errors.categoryId && (
-                  <p className="text-sm text-red-500">
-                    {errors.categoryId.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Rating */}
-              <div className="space-y-2">
-                <label htmlFor="rating">
-                  Valoración <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  id="rating"
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="5"
-                  placeholder="4.5"
-                  {...register("rating", {
-                    required: "La valoración es requerida",
-                    min: {
-                      value: 0,
-                      message: "La valoración debe ser al menos 0",
-                    },
-                    max: {
-                      value: 5,
-                      message: "La valoración no puede exceder 5",
-                    },
-                    valueAsNumber: true,
-                  })}
-                />
-                {errors.rating && (
-                  <p className="text-sm text-red-500">
-                    {errors.rating.message}
-                  </p>
-                )}
-                <p className="text-sm text-slate-500">
-                  Ingresa un valor entre 0 y 5 (ejemplo: 4.5)
-                </p>
-              </div>
-
-              {/* Mensaje de estado */}
-              {message && (
-                <div
-                  className={`p-4 rounded-md ${
-                    message.type === "success"
-                      ? "bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-                      : "bg-red-50 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-                  }`}
-                >
-                  {message.text}
-                </div>
-              )}
-
-              {/* Botones */}
-              <div className="flex gap-4">
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1"
-                >
-                  {isSubmitting && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  {isSubmitting ? "Creando..." : "Crear Link"}
-                </Button>
-                <Button type="button" variant="solid" onPress={() => reset()}>
-                  Limpiar
-                </Button>
-              </div>
-            </form>
-          </CardBody>
-        </Card>
-      </div>
-    </main>
-  );
+  // Si está autenticado y autorizado, mostrar el formulario
+  return <CreateNewLinkForm />;
 }

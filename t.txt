@@ -1,14 +1,16 @@
-PROMPT: Integra Clerk en este proyecto Next.js con TypeScript.
-Requisitos:
-1. Instala e integra Clerk, pero no modifiques ninguna otra página ni archivo del proyecto excepto "src/app/create-new-link/page.tsx".
-2. Protege esa página con Clerk: solo usuarios autenticados específicos pueden acceder.
-3. Si un usuario no está autenticado o no pertenece a la lista de permitidos, redirígelo automáticamente a la pantalla de login de Clerk.
-4. Usa las funciones de Clerk para Next.js App Router (auth, redirectToSignIn, currentUser, etc.), no una configuración manual.
-5. Mantén intacta la UI existente. No cambies estilos, ni imports de UI (@heroui/react), ni animaciones (framer-motion).
-6. Usa TypeScript correctamente (tipado explícito cuando sea necesario).
-7. Solo agrega el código necesario de Clerk y el control de acceso, sin tocar el resto de la app.
-8. Crea una lista de user IDs o correos permitidos (ejemplo: const allowedUsers = ["user_123", "user_456"];).
-9. Si el usuario no está permitido, muestra un pequeño mensaje centrado tipo “No autorizado” usando @heroui/react.
-10. No instales nada más que Clerk, ya están disponibles: @heroui/react, @libsql/client, framer-motion, lucide-react, next-themes.
-11. Mantén todo el resto de la funcionalidad y la UI de la página igual, solo añade la capa de protección.
-Objetivo final: “src/app/create-new-link/page.tsx” debe requerir login con Clerk y limitar acceso a una lista de usuarios específicos.
+PROMPT: Refactoriza esta página para que toda la lógica de autenticación y permisos se ejecute del lado del servidor.
+Contexto:
+- Archivo actual: src/app/create-new-link/page.tsx
+- Proyecto en Next.js con App Router y TypeScript.
+- Actualmente la página usa "use client" y contiene lógica de Clerk (auth, allowedUsers, validaciones) directamente en el cliente.
+- Objetivo: mover TODA esa lógica al lado del servidor para que los datos sensibles (como allowedUsers) no se envíen al cliente.
+- Usa las APIs de Clerk para el server: auth(), currentUser(), redirectToSignIn() desde "@clerk/nextjs/server".
+- Declara la lista allowedUsers como variable de entorno (process.env.ALLOWED_USERS, separada por comas).
+- En el servidor, valida que el usuario esté autenticado y que su userId o email esté incluido en allowedUsers.
+- Si no está autenticado, usa redirectToSignIn().
+- Si no está autorizado, renderiza un componente simple <UnauthorizedMessage /> (ya existe o lo importas de "@/components/unauthorized-message").
+- Mantén la UI, los imports y la funcionalidad de la página exactamente igual. Solo mueve las validaciones fuera del cliente.
+- Elimina "use client" si ya no es necesaria. Solo mantenla si hay componentes que realmente la requieren (por ejemplo, estados, animaciones o hooks del cliente).
+- No cambies estilos, animaciones, ni la lógica de la base de datos con @libsql/client.
+- Usa tipado estricto en TypeScript (usa types de Clerk si aplica).
+Resultado esperado: una página de servidor (sin "use client") que primero valida al usuario con Clerk en el backend, protege el acceso con allowedUsers desde .env, y mantiene la UI intacta.

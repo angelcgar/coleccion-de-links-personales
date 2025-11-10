@@ -98,14 +98,14 @@ export async function getLinksStart(): Promise<LinkItem[]> {
     INNER JOIN categories c ON l.category_id = c.id
   `);
   return result.rows.map((row) => ({
-    id: row.id as string,
-    name: row.name,
-    description: row.description,
-    url: row.url,
-    dateAdded: row.date_added,
-    rating: row.rating,
-    categoryId: row.category_id,
-    categoryName: row.categoryName,
+    id: String(row.id),
+    name: String(row.name ?? ""),
+    description: String(row.description ?? ""),
+    url: String(row.url ?? ""),
+    dateAdded: String(row.date_added ?? ""),
+    rating: Number(row.rating ?? 0),
+    categoryId: String(row.category_id ?? ""),
+    categoryName: String(row.categoryName ?? ""),
   }));
 }
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
@@ -18,8 +18,6 @@ import {
   getCategories,
   type Category,
 } from "@/app/actions/db-actions";
-
-import Link from "next/link";
 
 type FormData = {
   name: string;
@@ -87,16 +85,9 @@ export default function CreateNewLinkForm() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 pt-20">
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <div className="mb-6">
-          <Link href="/">
-            <Button variant="ghost" className="mb-4">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Volver a la lista
-            </Button>
-          </Link>
-
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
             Crear Nuevo Link
           </h1>

@@ -6,13 +6,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { useForm } from "react-hook-form";
+import { useUser, RedirectToSignIn } from "@clerk/nextjs";
 
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Textarea } from "@heroui/input";
-import { Chip } from "@heroui/chip";
 import { Select, SelectItem } from "@heroui/react";
 
 import { Card, CardBody, CardHeader } from "@heroui/react";
@@ -23,6 +23,13 @@ import {
   type Category,
 } from "@/app/actions/db-actions";
 
+// Lista de usuarios permitidos (IDs de Clerk o emails)
+const allowedUsers = [
+  "user_2pQKxxxxxxxxxxxxxxxxxxx", // Ejemplo de ID de usuario de Clerk
+  "example@email.com", // Ejemplo de email
+  // Agrega aquí los IDs o emails de los usuarios que quieres permitir
+];
+
 type FormData = {
   name: string;
   description: string;
@@ -31,9 +38,26 @@ type FormData = {
   rating: number;
 };
 
+function UnauthorizedMessage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center">
+      <Card className="max-w-md mx-auto">
+        <CardBody className="text-center">
+          <h2 className="text-xl font-semibold mb-2 text-slate-900 dark:text-slate-50">
+            No autorizado
+          </h2>
+          <p className="text-slate-600 dark:text-slate-400">
+            No tienes permisos para acceder a esta página.
+          </p>
+        </CardBody>
+      </Card>
+    </div>
+  );
+}
+
 export default function CreateNewLink() {
+  const { user, isSignedIn, isLoaded } = useUser();
   const router = useRouter();
-  const [value, setValue] = useState(new Set([]));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [message, setMessage] = useState<{
@@ -63,6 +87,32 @@ export default function CreateNewLink() {
     loadCategories();
   }, []);
 
+  // Si aún no ha cargado la información del usuario, mostrar loading
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Cargando...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Si no está autenticado, redirigir al login
+  if (!isSignedIn) {
+    return <RedirectToSignIn />;
+  }
+
+  // Verificar si el usuario está en la lista de permitidos
+  const isAuthorized =
+    allowedUsers.includes(user.id) ||
+    allowedUsers.includes(user.primaryEmailAddress?.emailAddress || "");
+
+  if (!isAuthorized) {
+    return <UnauthorizedMessage />;
+  }
+
   const onSubmit = async (data: FormData) => {
     console.log(data);
     setIsSubmitting(true);
@@ -82,7 +132,7 @@ export default function CreateNewLink() {
       } else {
         setMessage({ type: "error", text: result.message });
       }
-    } catch (error) {
+    } catch {
       setMessage({ type: "error", text: "Error inesperado al crear el link" });
     } finally {
       setIsSubmitting(false);
@@ -207,7 +257,6 @@ export default function CreateNewLink() {
                     const event = {
                       target: { name: "categoryId", value: selected },
                     };
-                    // @ts-expect-error
                     register("categoryId").onChange(event);
                   }}
                 >
@@ -215,13 +264,6 @@ export default function CreateNewLink() {
                     <SelectItem key={category.id}>{category.name}</SelectItem>
                   ))}
                 </Select>
-
-                {/* <input
-                  type="hidden"
-                  {...register("categoryId", {
-                    required: "La categoría es requerida",
-                  })}
-                /> */}
 
                 {errors.categoryId && (
                   <p className="text-sm text-red-500">

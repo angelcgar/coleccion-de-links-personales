@@ -1,16 +1,44 @@
-PROMPT: Refactoriza esta página para que toda la lógica de autenticación y permisos se ejecute del lado del servidor.
+PROMPT: Extiende este proyecto Next.js con TypeScript para incluir una nueva página `/modify-link` y nuevas funciones en `src/app/actions/db-actions.ts`.
 Contexto:
-- Archivo actual: src/app/create-new-link/page.tsx
-- Proyecto en Next.js con App Router y TypeScript.
-- Actualmente la página usa "use client" y contiene lógica de Clerk (auth, allowedUsers, validaciones) directamente en el cliente.
-- Objetivo: mover TODA esa lógica al lado del servidor para que los datos sensibles (como allowedUsers) no se envíen al cliente.
-- Usa las APIs de Clerk para el server: auth(), currentUser(), redirectToSignIn() desde "@clerk/nextjs/server".
-- Declara la lista allowedUsers como variable de entorno (process.env.ALLOWED_USERS, separada por comas).
-- En el servidor, valida que el usuario esté autenticado y que su userId o email esté incluido en allowedUsers.
-- Si no está autenticado, usa redirectToSignIn().
-- Si no está autorizado, renderiza un componente simple <UnauthorizedMessage /> (ya existe o lo importas de "@/components/unauthorized-message").
-- Mantén la UI, los imports y la funcionalidad de la página exactamente igual. Solo mueve las validaciones fuera del cliente.
-- Elimina "use client" si ya no es necesaria. Solo mantenla si hay componentes que realmente la requieren (por ejemplo, estados, animaciones o hooks del cliente).
-- No cambies estilos, animaciones, ni la lógica de la base de datos con @libsql/client.
-- Usa tipado estricto en TypeScript (usa types de Clerk si aplica).
-Resultado esperado: una página de servidor (sin "use client") que primero valida al usuario con Clerk en el backend, protege el acceso con allowedUsers desde .env, y mantiene la UI intacta.
+- El proyecto usa Turso con SQLite a través de @libsql/client.
+- Clerk maneja la autenticación, igual que en la página `/create-new-link`.
+- Las dependencias que puedes usar ya están disponibles: @heroui/react, framer-motion, lucide-react, next-themes. No instales nada nuevo.
+- No uses animaciones en esta página, debe ser práctica y directa.
+
+Tareas específicas:
+
+1. En `src/app/actions/db-actions.ts`:
+   - Comenta la función `seedInitialData`.
+   - Elimina todas las referencias a `seedInitialData` en el proyecto.
+   - Crea tres nuevas funciones:
+       a) `getLinkById(id: string)` → devuelve la fila completa del link con ese ID desde la base de datos.
+       b) `updateLink(id: string, data: { title?: string; url?: string; description?: string; category?: string; })`
+          → actualiza los campos provistos en la tabla de links.
+       c) `deleteLink(id: string)` → elimina el link con ese ID.
+   - Todas deben usar el cliente Turso con consultas SQL preparadas y tipadas en TypeScript.
+   - Asegúrate de que usen `await db.execute()` con parámetros seguros, sin concatenación de strings.
+
+2. En `src/app/modify-link/page.tsx`:
+   - Crea una página protegida con la misma lógica de autenticación que `/create-new-link`.
+   - Esta página mostrará una tabla que ocupe todo el ancho posible, listando todos los links existentes.
+   - Cada fila mostrará la información completa del link: título, URL, descripción, categoría, fecha de creación, etc.
+   - Al final de cada fila habrá dos botones:
+        🔹 "Modificar": abre un diálogo con un formulario que carga los datos actuales del link (usando `getLinkById`).
+                       El formulario permite editar los campos y al enviar llama a `updateLink`.
+        🔹 "Eliminar": abre un pequeño diálogo de confirmación. Si el usuario confirma, llama a `deleteLink`.
+   - Usa componentes de @heroui/react para la tabla, diálogos, inputs y botones.
+   - Mantén el estilo coherente con el resto de la app (usa el mismo theme o clases base).
+   - No uses animaciones ni framer-motion aquí, prioriza claridad y utilidad.
+   - Toda la lógica de actualización y eliminación debe ocurrir mediante Server Actions (Next.js 13+ con App Router).
+
+3. Estructura y detalles:
+   - La tabla debe usar el 100% del ancho disponible y tener un diseño limpio.
+   - Los diálogos deben ser modales claros y accesibles.
+   - Usa "use client" solo si algún componente estrictamente lo requiere (como el modal o eventos del usuario).
+   - Todo debe estar en TypeScript y tipado correctamente.
+   - No modifiques otras páginas, estilos ni componentes existentes fuera de estos archivos.
+
+Resultado esperado:
+- La función seedInitialData queda comentada y sin referencias.
+- db-actions.ts contiene getLinkById, updateLink y deleteLink completamente funcionales.
+- /modify-link es una página tipo panel administrativo con tabla y modales para editar o eliminar links, con autenticación de Clerk.

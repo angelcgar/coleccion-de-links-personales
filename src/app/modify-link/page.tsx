@@ -2,10 +2,11 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { UnauthorizedMessage } from "@/components/unauthorized-message";
 import ModifyLinksTable from "@/components/modify-links-table";
+import { env } from "@/config/envs";
 
 // Obtener lista de usuarios permitidos desde variables de entorno
 function getAllowedUsers(): string[] {
-  const allowedUsersEnv = process.env.ALLOWED_USERS;
+  const allowedUsersEnv = env.ALLOWED_USERS;
   if (!allowedUsersEnv) {
     console.warn(
       "ALLOWED_USERS no está configurado en las variables de entorno",

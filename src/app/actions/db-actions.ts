@@ -81,7 +81,7 @@ export async function getCategories(): Promise<Category[]> {
   }
 }
 
-type LinkItem = {
+export type LinkItem = {
   id: string;
   name: string;
   url: string;

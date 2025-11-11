@@ -26,6 +26,7 @@ import {
   Card,
   CardBody,
   CardHeader,
+  Image,
 } from "@heroui/react";
 
 import {
@@ -44,6 +45,7 @@ type EditFormData = {
   description: string;
   categoryId: string;
   rating: number;
+  faviconUrl?: string;
 };
 
 export default function ModifyLinksTable() {
@@ -115,6 +117,7 @@ export default function ModifyLinksTable() {
         setValue("description", linkData.description);
         setValue("categoryId", linkData.categoryId);
         setValue("rating", linkData.rating);
+        setValue("faviconUrl", linkData.faviconUrl || "");
         onEditOpen();
       }
     } catch (error) {
@@ -142,6 +145,7 @@ export default function ModifyLinksTable() {
         description: data.description,
         categoryId: data.categoryId,
         rating: data.rating,
+        faviconUrl: data.faviconUrl,
       });
 
       if (result.success) {
@@ -245,53 +249,79 @@ export default function ModifyLinksTable() {
                 <TableColumn>ACCIONES</TableColumn>
               </TableHeader>
               <TableBody emptyContent="No hay links para mostrar">
-                {links.map((link) => (
-                  <TableRow key={link.id}>
-                    <TableCell>{link.name}</TableCell>
-                    <TableCell>
-                      <a
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-500 hover:underline text-sm"
-                      >
-                        {link.url.length > 40
-                          ? `${link.url.substring(0, 40)}...`
-                          : link.url}
-                      </a>
-                    </TableCell>
-                    <TableCell>
-                      <div className="max-w-xs">
-                        {link.description.length > 60
-                          ? `${link.description.substring(0, 60)}...`
-                          : link.description}
-                      </div>
-                    </TableCell>
-                    <TableCell>{link.categoryName}</TableCell>
-                    <TableCell>{link.rating.toFixed(1)}</TableCell>
-                    <TableCell>{link.dateAdded}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          color="primary"
-                          variant="flat"
-                          onPress={() => handleEditClick(link.id)}
+                {links.map((link) => {
+                  // Generar favicon URL si no existe
+                  const faviconUrl =
+                    link.faviconUrl ||
+                    (() => {
+                      try {
+                        const hostname = new URL(link.url).hostname;
+                        return `https://www.google.com/s2/favicons?sz=64&domain_url=${hostname}`;
+                      } catch {
+                        return "https://www.google.com/s2/favicons?sz=64&domain_url=example.com";
+                      }
+                    })();
+
+                  return (
+                    <TableRow key={link.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Image
+                            src={faviconUrl}
+                            alt={`Favicon de ${link.name}`}
+                            width={24}
+                            height={24}
+                            className="w-6 h-6 flex-shrink-0"
+                            fallbackSrc="https://www.google.com/s2/favicons?sz=64&domain_url=example.com"
+                          />
+                          <span className="font-medium">{link.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <a
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-500 hover:underline text-sm"
                         >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          color="danger"
-                          variant="flat"
-                          onPress={() => handleDeleteClick(link)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {link.url.length > 40
+                            ? `${link.url.substring(0, 40)}...`
+                            : link.url}
+                        </a>
+                      </TableCell>
+                      <TableCell>
+                        <div className="max-w-xs">
+                          {link.description.length > 60
+                            ? `${link.description.substring(0, 60)}...`
+                            : link.description}
+                        </div>
+                      </TableCell>
+                      <TableCell>{link.categoryName}</TableCell>
+                      <TableCell>{link.rating.toFixed(1)}</TableCell>
+                      <TableCell>{link.dateAdded}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            color="primary"
+                            variant="flat"
+                            onPress={() => handleEditClick(link.id)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            color="danger"
+                            variant="flat"
+                            onPress={() => handleDeleteClick(link)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardBody>
@@ -424,6 +454,26 @@ export default function ModifyLinksTable() {
                     {errors.rating.message}
                   </p>
                 )}
+              </div>
+
+              {/* Favicon URL */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="edit-favicon-url"
+                  className="text-sm font-medium"
+                >
+                  Favicon URL (opcional)
+                </label>
+                <Input
+                  id="edit-favicon-url"
+                  type="url"
+                  placeholder="URL del favicon o déjalo vacío para generar automáticamente"
+                  {...register("faviconUrl")}
+                />
+                <p className="text-xs text-gray-500">
+                  Si no proporcionas una URL, se generará automáticamente basada
+                  en el dominio del enlace.
+                </p>
               </div>
 
               {/* Mensaje */}

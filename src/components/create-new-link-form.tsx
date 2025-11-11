@@ -25,6 +25,7 @@ type FormData = {
   url: string;
   categoryId: string;
   rating: number;
+  faviconUrl?: string;
 };
 
 export default function CreateNewLinkForm() {
@@ -177,6 +178,33 @@ export default function CreateNewLinkForm() {
                 {errors.url && (
                   <p className="text-sm text-red-500">{errors.url.message}</p>
                 )}
+              </div>
+
+              {/* Favicon URL */}
+              <div className="space-y-2">
+                <label htmlFor="faviconUrl" className="text-sm font-medium">
+                  URL del Favicon (opcional)
+                </label>
+                <Input
+                  id="faviconUrl"
+                  type="url"
+                  placeholder="https://ejemplo.com/favicon.ico (se generará automáticamente si se deja vacío)"
+                  {...register("faviconUrl", {
+                    pattern: {
+                      value: /^https?:\/\/.+/,
+                      message: "Debe ser una URL válida (http:// o https://)",
+                    },
+                  })}
+                />
+                {errors.faviconUrl && (
+                  <p className="text-sm text-red-500">
+                    {errors.faviconUrl.message}
+                  </p>
+                )}
+                <p className="text-sm text-slate-500">
+                  Si no se proporciona, se generará automáticamente basado en la
+                  URL del sitio
+                </p>
               </div>
 
               {/* Categoría */}

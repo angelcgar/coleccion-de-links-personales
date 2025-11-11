@@ -12,6 +12,7 @@ export type LinkType = {
   categoryName: string;
   rating: number;
   dateAdded: string;
+  faviconUrl?: string;
 };
 
 export type Category = {
@@ -89,6 +90,7 @@ type LinkItem = {
   dateAdded: string;
   categoryId: string;
   categoryName: string;
+  faviconUrl?: string;
 };
 
 export async function getLinksStart(): Promise<LinkItem[]> {
@@ -106,6 +108,7 @@ export async function getLinksStart(): Promise<LinkItem[]> {
     rating: Number(row.rating ?? 0),
     categoryId: String(row.category_id ?? ""),
     categoryName: String(row.categoryName ?? ""),
+    faviconUrl: row.favicon_url ? String(row.favicon_url) : undefined,
   }));
 }
 
@@ -167,6 +170,7 @@ export async function getLinks(options: {
         l.name,
         l.description,
         l.url,
+        l.favicon_url,
         l.category_id as categoryId,
         c.name as categoryName,
         l.rating,
@@ -208,6 +212,7 @@ export async function getLinks(options: {
       categoryName: row.categoryName as string,
       rating: row.rating as number,
       dateAdded: row.dateAdded as string,
+      faviconUrl: row.favicon_url ? String(row.favicon_url) : undefined,
     }));
 
     return { links, total };
@@ -224,21 +229,36 @@ export async function createLink(data: {
   url: string;
   categoryId: string;
   rating: number;
+  faviconUrl?: string;
 }) {
   try {
     const id = `link_${Date.now()}_${Math.random().toString(36).substring(7)}`;
     const dateAdded = new Date().toISOString().split("T")[0];
 
+    // Generar favicon_url automáticamente si no se proporciona
+    let faviconUrl = data.faviconUrl;
+    if (!faviconUrl) {
+      try {
+        const hostname = new URL(data.url).hostname;
+        faviconUrl = `https://www.google.com/s2/favicons?sz=64&domain_url=${hostname}`;
+      } catch {
+        // Si la URL no es válida, usar un favicon genérico
+        faviconUrl =
+          "https://www.google.com/s2/favicons?sz=64&domain_url=example.com";
+      }
+    }
+
     await turso.execute({
       sql: `
-        INSERT INTO links (id, name, description, url, category_id, rating, date_added)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO links (id, name, description, url, favicon_url, category_id, rating, date_added)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `,
       args: [
         id,
         data.name,
         data.description,
         data.url,
+        faviconUrl,
         data.categoryId,
         data.rating,
         dateAdded,
@@ -307,6 +327,7 @@ export async function getLinkById(id: string): Promise<LinkType | null> {
           l.name,
           l.description,
           l.url,
+          l.favicon_url,
           l.category_id as categoryId,
           c.name as categoryName,
           l.rating,
@@ -332,6 +353,7 @@ export async function getLinkById(id: string): Promise<LinkType | null> {
       categoryName: row.categoryName as string,
       rating: row.rating as number,
       dateAdded: row.dateAdded as string,
+      faviconUrl: row.favicon_url ? String(row.favicon_url) : undefined,
     };
   } catch (error) {
     console.error("Error obteniendo link por ID:", error);
@@ -348,6 +370,7 @@ export async function updateLink(
     description?: string;
     categoryId?: string;
     rating?: number;
+    faviconUrl?: string;
   },
 ) {
   try {
@@ -362,6 +385,22 @@ export async function updateLink(
     if (data.url !== undefined) {
       updates.push("url = ?");
       args.push(data.url);
+
+      // Si se actualiza la URL y no se proporciona faviconUrl, generar uno nuevo
+      if (data.faviconUrl === undefined) {
+        try {
+          const hostname = new URL(data.url).hostname;
+          const autoFaviconUrl = `https://www.google.com/s2/favicons?sz=64&domain_url=${hostname}`;
+          updates.push("favicon_url = ?");
+          args.push(autoFaviconUrl);
+        } catch {
+          // Si la URL no es válida, usar un favicon genérico
+          updates.push("favicon_url = ?");
+          args.push(
+            "https://www.google.com/s2/favicons?sz=64&domain_url=example.com",
+          );
+        }
+      }
     }
     if (data.description !== undefined) {
       updates.push("description = ?");
@@ -374,6 +413,10 @@ export async function updateLink(
     if (data.rating !== undefined) {
       updates.push("rating = ?");
       args.push(data.rating);
+    }
+    if (data.faviconUrl !== undefined) {
+      updates.push("favicon_url = ?");
+      args.push(data.faviconUrl);
     }
 
     if (updates.length === 0) {

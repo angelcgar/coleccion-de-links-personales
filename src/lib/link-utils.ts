@@ -1,14 +1,5 @@
 // src/lib/link-utils.ts
-export type LinkItem = {
-  id: string;
-  name: string;
-  url: string;
-  description: string;
-  rating: number;
-  dateAdded: string;
-  categoryId: string;
-  categoryName: string;
-};
+import type { LinkItem } from "@/app/actions/db-actions";
 
 export type SortOrder = "name" | "date" | "category" | "rating";
 

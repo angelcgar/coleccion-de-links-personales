@@ -24,38 +24,29 @@ import { AnimatedCard } from "@/components/animated-card";
 import { CategoryFilter } from "@/components/category-filter";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { InfiniteScroll } from "@/components/infinite-scroll";
-import { getLinksStart } from "./actions/db-actions";
-import {
-  filterAndSortLinks,
-  type LinkItem,
-  type SortOrder,
-} from "@/lib/link-utils";
+import { getLinksStart, type LinkItem } from "./actions/db-actions";
+import { filterAndSortLinks, type SortOrder } from "@/lib/link-utils";
 
 export default function Home() {
   const [sortOrder, setSortOrder] = useState<SortOrder>("name");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [allLinks, setAllLinks] = useState<unknown[]>([]);
-  const [visibleLinks, setVisibleLinks] = useState<unknown[]>([]);
+  const [allLinks, setAllLinks] = useState<LinkItem[]>([]);
+  const [visibleLinks, setVisibleLinks] = useState<LinkItem[]>([]);
   const [page, setPage] = useState(1);
   const linksPerPage = 12;
 
-  const filteredLinks = useMemo(
+  const filteredLinks: LinkItem[] = useMemo(
     () =>
-      filterAndSortLinks(
-        allLinks as LinkItem[],
-        searchQuery,
-        selectedCategories,
-        sortOrder,
-      ),
+      filterAndSortLinks(allLinks, searchQuery, selectedCategories, sortOrder),
     [allLinks, searchQuery, selectedCategories, sortOrder],
   );
 
   // Carga inicial desde la DB
   useEffect(() => {
     (async () => {
-      const links = await getLinksStart();
+      const links: LinkItem[] = await getLinksStart();
       setAllLinks(links);
       setVisibleLinks(links);
       setIsLoaded(true);
@@ -65,17 +56,18 @@ export default function Home() {
   // Actualiza los visibles cuando cambian los filtros
   useEffect(() => {
     setPage(1);
-    setVisibleLinks(filteredLinks.slice(0, linksPerPage));
+    const newVisible: LinkItem[] = filteredLinks.slice(0, linksPerPage);
+    setVisibleLinks(newVisible);
   }, [filteredLinks]);
 
   const loadMoreLinks = useCallback(() => {
     const nextPage = page + 1;
     const startIndex = page * linksPerPage;
     const endIndex = nextPage * linksPerPage;
-    const newLinks = filteredLinks.slice(startIndex, endIndex);
+    const newLinks: LinkItem[] = filteredLinks.slice(startIndex, endIndex);
 
     if (newLinks.length > 0) {
-      setVisibleLinks((prev) => [...prev, ...newLinks]);
+      setVisibleLinks((prev: LinkItem[]) => [...prev, ...newLinks]);
       setPage(nextPage);
     }
   }, [page, filteredLinks]);
@@ -162,11 +154,14 @@ export default function Home() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleLinks.map((link, index) => (
-            <AnimatedCard key={link.id} index={index % linksPerPage}>
-              <LinkCardContent link={link} />
-            </AnimatedCard>
-          ))}
+          {(() => {
+            const typedLinks: LinkItem[] = visibleLinks as LinkItem[];
+            return typedLinks.map((link, index) => (
+              <AnimatedCard key={link.id} index={index % linksPerPage}>
+                <LinkCardContent link={link} />
+              </AnimatedCard>
+            ));
+          })()}
         </div>
 
         {visibleLinks.length < filteredLinks.length && (
@@ -182,15 +177,28 @@ export default function Home() {
 }
 
 function LinkCardContent({ link }: { link: LinkItem }) {
+  // Generar favicon URL si no existe
+  const faviconUrl =
+    link.faviconUrl ||
+    (() => {
+      try {
+        const hostname = new URL(link.url).hostname;
+        return `https://www.google.com/s2/favicons?sz=64&domain_url=${hostname}`;
+      } catch {
+        return "https://www.google.com/s2/favicons?sz=64&domain_url=example.com";
+      }
+    })();
+
   return (
     <>
       <CardHeader className="flex gap-3 dark:text-white text-slate-900">
         <Image
-          alt="logo"
+          alt={`Favicon de ${link.name}`}
           height={40}
           width={40}
           radius="sm"
-          src="https://avatars.githubusercontent.com/u/86160567?s=200&v=4"
+          src={faviconUrl}
+          fallbackSrc="https://www.google.com/s2/favicons?sz=64&domain_url=example.com"
         />
         <div className="flex flex-col">
           <p className="text-md">{link.name}</p>

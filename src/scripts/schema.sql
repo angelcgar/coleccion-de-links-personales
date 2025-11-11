@@ -13,6 +13,7 @@ CREATE TABLE links (
   name TEXT NOT NULL,
   description TEXT,
   url TEXT NOT NULL,
+  favicon_url TEXT,
   date_added TEXT,
   rating REAL,
   category_id TEXT NOT NULL,

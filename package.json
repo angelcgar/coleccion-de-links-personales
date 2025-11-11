@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "build": "bun pm trust --all && next build --turbopack",
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write"
@@ -29,5 +29,10 @@
     "@tailwindcss/postcss": "^4",
     "tailwindcss": "^4",
     "@biomejs/biome": "2.2.0"
-  }
+  },
+  "trustedDependencies": [
+    "@clerk/shared",
+    "@heroui/shared-utils",
+    "@tailwindcss/oxide"
+  ]
 }
